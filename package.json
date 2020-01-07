@@ -1,0 +1,34 @@
+{
+  "name": "wasm",
+  "version": "1.0.0",
+  "description": "",
+  "main": "lib/index.js",
+  "scripts": {
+    "install": "iced -o lib -c src",
+    "test": "mocha --recursive --compilers coffee:iced-coffee-script/register --require iced-coffee-coverage/register-istanbul test && istanbul report"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hu2prod/wasm.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/hu2prod/wasm/issues"
+  },
+  "homepage": "https://github.com/hu2prod/wasm#readme",
+  "devDependencies": {
+    "coveralls": "^2.11.16",
+    "iced-coffee-coverage": "^1.0.21",
+    "iced-coffee-script": "^108.0.11",
+    "istanbul": "^0.4.5",
+    "mocha": "^3.2.0"
+  },
+  "dependencies": {
+    "chokidar": "^3.3.1",
+    "fy": "github:hu2prod/fy",
+    "lock_mixin": "github:hu2prod/lock_mixin",
+    "wabt": "^1.0.12"
+  }
+}

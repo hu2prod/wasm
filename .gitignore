@@ -1,0 +1,7 @@
+node_modules
+coverage
+lib
+npm-debug.log
+test_wasm/*/*/*.o
+test_wasm/*/*.wasm
+test_wasm/*/*.wat
