@@ -121,8 +121,13 @@ lock = (opt, wrap_me, continue_fn)->
   await exec cmd, defer(err); return on_end err if err
   
   await fs.readFile path_wasm, defer(err, wasm_buffer); return on_end err if err
-  wat_buffer = wabt.readWasm(wasm_buffer, {}).toText({})
-  await fs.writeFile path_wat, wat_buffer, defer(err); return on_end err if err
+  
+  setTimeout ()->
+    # dev life quality
+    wat_buffer = wabt.readWasm(wasm_buffer, {}).toText({})
+    await fs.writeFile path_wat, wat_buffer, defer(err);
+    perr err if err
+  , 0
   
   on_end()
 

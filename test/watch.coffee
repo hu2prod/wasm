@@ -90,7 +90,7 @@ describe "watch section", ()->
       assert.strictEqual event_counter, assert_value
     , on_end
   
-  it "fast change should trigger 1 recompile", (on_end)->
+  it "fast change should trigger 1 recompile (can fail)", (on_end)->
     assert_value = event_counter + 1
     fs.writeFileSync "wasm_test/lib/extra.h", ""
     await setTimeout defer(), 10 # we must return control to watcher for a bit
