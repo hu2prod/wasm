@@ -111,6 +111,11 @@ chokidar = require "chokidar"
       full_obj_list.sort()
       opt = {
         dir
+        
+        path_c
+        path_wasm
+        path_wat
+        
         obj_list : full_obj_list
       }
       await mod_compile opt, defer(err)
