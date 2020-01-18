@@ -60,16 +60,16 @@ lock = (opt, wrap_me, continue_fn)->
       file_o  = file.replace /\.c$/, ".o"
       cmd = "clang-8 #{flag_list.join ' '} -o ./build/#{file_o} ./#{file}"
       # p cmd # DEBUG
-      job_list.push {cmd, dir}
+      job_list.push {cmd, dir, file}
       obj_list.upush "#{dir}/build/#{file_o}"
   
   if opt.seq
     await on_end = lock opt, on_end, defer()
     for job in job_list
-      {cmd, dir} = job
+      {cmd, dir, file} = job
       await exec cmd, {cwd: dir}, defer(err); return on_end err if err
       if verbose
-        puts dir
+        puts "#{dir}/#{file}"
   else
     first_err = null
     for job in job_list
