@@ -48,6 +48,7 @@ describe "lib section", ()->
             obj_list
             seq
             drop_clang_warning
+            use_wasm_runtime : false
           }
           await mod.mod_compile opt, defer(err); return on_end err if err
           
@@ -76,3 +77,5 @@ describe "lib section", ()->
     assert called, "logsi not called"
     
     on_end()
+  
+  

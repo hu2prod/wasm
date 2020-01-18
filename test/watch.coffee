@@ -14,9 +14,10 @@ json_eq = (a, b)->
 # 2>/dev/null suppresses stderr
 #  ; echo -n '' suppresses error code 1
 
+retry_cb_wait_time = 500
 retry_cb = (cb, on_end)->
   err = null
-  for i in [0 ... 5]
+  for i in [0 ... retry_cb_wait_time/100]
     await setTimeout defer(), 100
     try
       cb()
@@ -45,6 +46,7 @@ describe "watch section", ()->
       on_recompile_done : ()->
         p "on_recompile_done EXT"
         event_counter++
+      use_wasm_runtime : false
     }
     
     await mod.watch opt, defer(err, res); return on_end err if err
@@ -102,7 +104,7 @@ describe "watch section", ()->
   it "stop watch", (on_end)->
     await watcher.close().then defer()
     # close is async, and also ... didn't stop before promise fire (a little bit later)... LOL
-    await setTimeout defer(), 10 # WTF???
+    await setTimeout defer(), 1000 # WTF???
     
     on_end()
   
@@ -124,12 +126,34 @@ describe "watch section", ()->
       on_recompile_done : ()->
         p "on_recompile_done EXT"
         event_counter++
+      use_wasm_runtime : false
     }
     
     await mod.watch opt, defer(err, res); return on_end err if err
     {watcher} = res
     await setTimeout defer(), 500
     assert.strictEqual event_counter, 0
+    
+    watcher.close()
+    
+    on_end()
+  
+  it "with runtime", (on_end)->
+    @timeout 10000
+    event_counter = 0
+    opt = {
+      dir : "wasm_test/mod"
+      on_recompile_done : ()->
+        p "on_recompile_done EXT"
+        event_counter++
+    }
+    
+    await mod.watch opt, defer(err, res); return on_end err if err
+    {watcher} = res
+    await
+      retry_cb ()->
+        assert.strictEqual event_counter, 1
+      , defer(err); return on_end err if err
     
     watcher.close()
     

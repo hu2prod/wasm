@@ -2,6 +2,7 @@ module = @
 require "fy"
 require "lock_mixin"
 fs      = require "fs"
+mod_path= require "path"
 wabt    = require("wabt")()
 {
   exec
@@ -80,11 +81,14 @@ lock = (opt, wrap_me, continue_fn)->
   
   on_end null, {obj_list}
 
+_mod_compile_counter = 0
 @mod_compile = (opt, on_end)->
   {
     # если не заполнять dir, то нужно заполнить все 3 остальных параметра
     dir
     
+    use_wasm_runtime
+    path_proxy
     path_c
     path_wasm
     path_wat
@@ -95,6 +99,9 @@ lock = (opt, wrap_me, continue_fn)->
     path_c    ?= "#{dir}/index.c"
     path_wasm ?= "#{dir}/index.wasm"
     path_wat  ?= "#{dir}/index.wat"
+  
+  use_wasm_runtime ?= true
+  path_proxy ?= "/tmp/#{process.pid}_#{_mod_compile_counter++}.c"
   
   return on_end new Error "missing path_c"    if !path_c
   return on_end new Error "missing path_wasm" if !path_wasm
@@ -117,7 +124,25 @@ lock = (opt, wrap_me, continue_fn)->
   if opt.drop_clang_warning
     flag_list.push "-w"
   
-  cmd = "clang-8 #{flag_list.join ' '} -std=c11 -o #{path_wasm} #{path_c} #{opt.obj_list.join ' '}"
+  if !use_wasm_runtime
+    compile_target = path_c
+  else
+    compile_target = path_proxy
+    runtime_path = "node_modules/wasm_runtime/lib/runtime.h"
+    proxy_cont = """
+    #include #{JSON.stringify mod_path.resolve runtime_path}
+    #include #{JSON.stringify mod_path.resolve path_c}
+    
+    """
+    
+    await fs.writeFile path_proxy, proxy_cont, defer(err); return on_end err if err
+    
+    old_on_end = on_end
+    on_end = ()->
+      await fs.unlink path_proxy, defer(err); return old_on_end err if err
+      old_on_end()
+  
+  cmd = "clang-8 #{flag_list.join ' '} -std=c11 -o #{path_wasm} #{compile_target} #{opt.obj_list.join ' '}"
   await exec cmd, defer(err); return on_end err if err
   
   await fs.readFile path_wasm, defer(err, wasm_buffer); return on_end err if err

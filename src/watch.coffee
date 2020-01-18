@@ -22,13 +22,18 @@ chokidar = require "chokidar"
     init_compile
     chokidar_opt
     on_recompile_done
+    use_wasm_runtime
   } = opt
   
   obj_list          ?= []
   lib_dir_list      ?= []
   init_compile      ?= true
+  use_wasm_runtime  ?= true
   chokidar_opt      ?= {}
   on_recompile_done ?= ()->
+  
+  if use_wasm_runtime
+    lib_dir_list.upush "node_modules/wasm_runtime/lib"
   
   norm_lib_dir_list = []
   do ()->
@@ -71,6 +76,7 @@ chokidar = require "chokidar"
         path_wat
         
         obj_list : full_obj_list
+        use_wasm_runtime
       }
       await mod_compile opt, defer(err)
       if err
