@@ -75,11 +75,12 @@ lock = (opt, wrap_me, continue_fn)->
     for job in job_list
       await limiter.lock defer()
       do (job)->
-        {cmd, dir, file} = job
+        {cmd, dir} = job
+        # can't use file here because file is shared variable
         await exec cmd, {cwd: dir}, defer(err)
         first_err ?= err # prevent limiter dead-lock
         if verbose
-          puts "#{dir}/#{file}"
+          puts "#{dir}/#{job.file}"
         limiter.unlock()
     await limiter.drain defer()
     return on_end first_err if first_err

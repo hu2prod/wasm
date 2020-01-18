@@ -93,13 +93,23 @@ describe "watch section", ()->
     , on_end
   
   it "fast change should trigger 1 recompile (can fail)", (on_end)->
-    assert_value = event_counter + 1
-    fs.writeFileSync "wasm_test/lib/extra.h", ""
-    await setTimeout defer(), 10 # we must return control to watcher for a bit
-    fs.unlinkSync "wasm_test/lib/extra.h"
-    await setTimeout defer(), 500
-    assert.strictEqual event_counter, assert_value
-    on_end()
+    @timeout 20000
+    err = null
+    for retry_i in [0 ... 10]
+      assert_value = event_counter + 1
+      fs.writeFileSync "wasm_test/lib/extra.h", ""
+      await setTimeout defer(), 10 # we must return control to watcher for a bit
+      fs.unlinkSync "wasm_test/lib/extra.h"
+      await setTimeout defer(), 500
+      try
+        assert.strictEqual event_counter, assert_value
+        break
+      catch err
+        "skip"
+      
+      await setTimeout defer(), 500
+      puts "retry #{retry_i}"
+    on_end(err)
   
   it "stop watch", (on_end)->
     await watcher.close().then defer()
