@@ -67,7 +67,13 @@ lock = (opt, wrap_me, continue_fn)->
     await on_end = lock opt, on_end, defer()
     for job in job_list
       {cmd, dir, file} = job
-      await exec cmd, {cwd: dir}, defer(err); return on_end err if err
+      await exec cmd, {cwd: dir}, defer(err, stdout, stderr)
+      if err
+        perr "####################################################################################################"
+        perr "failed to build #{dir}"
+        perr stderr
+        return on_end err
+      
       if verbose
         puts "#{dir}/#{file}"
   else
@@ -77,7 +83,12 @@ lock = (opt, wrap_me, continue_fn)->
       do (job)->
         {cmd, dir} = job
         # can't use file here because file is shared variable
-        await exec cmd, {cwd: dir}, defer(err)
+        await exec cmd, {cwd: dir}, defer(err, stdout, stderr)
+        if err
+          perr "####################################################################################################"
+          perr "failed to build #{dir}"
+          perr stderr
+        
         first_err ?= err # prevent limiter dead-lock
         if verbose
           puts "#{dir}/#{job.file}"
@@ -104,6 +115,7 @@ _mod_compile_counter = 0
     
     obj_list
     verbose
+    keep_tmp
   } = opt
   if dir
     path_c    ?= "#{dir}/index.c"
@@ -149,11 +161,17 @@ _mod_compile_counter = 0
     
     old_on_end = on_end
     on_end = ()->
-      await fs.unlink path_proxy, defer(err); return old_on_end err if err
+      unless keep_tmp
+        await fs.unlink path_proxy, defer(err); return old_on_end err if err
       old_on_end()
   
   cmd = "clang-8 #{flag_list.join ' '} -std=c11 -o #{path_wasm} #{compile_target} #{opt.obj_list.join ' '}"
-  await exec cmd, defer(err); return on_end err if err
+  await exec cmd, defer(err, stdout, stderr)
+  if err
+    perr "####################################################################################################"
+    perr "failed to build #{dir}"
+    perr stderr
+    return on_end err
   if verbose
     puts dir
   
