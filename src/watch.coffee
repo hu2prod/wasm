@@ -24,6 +24,7 @@ chokidar = require "chokidar"
     chokidar_opt
     on_recompile_done
     use_wasm_runtime
+    verbose
   } = opt
   
   obj_list          ?= []
@@ -46,9 +47,9 @@ chokidar = require "chokidar"
       norm_lib_dir_list.push _lib
     return
   
-  safe_on_recompile_done = ()->
+  safe_on_recompile_done = (affected_dir_list)->
     try
-      on_recompile_done()
+      on_recompile_done(affected_dir_list)
     catch err
       perr err
     
@@ -56,11 +57,13 @@ chokidar = require "chokidar"
   if init_compile
     extra_obj_list = []
     is_ok = true
+    affected_dir_list = []
     await
       for lib in norm_lib_dir_list
+        affected_dir_list.push lib.dir
         cb = defer()
         do (lib, cb)->
-          await lib_compile lib, defer(err, res)
+          await lib_compile obj_merge({verbose}, lib), defer(err, res)
           if err
             perr err
             is_ok = false
@@ -74,6 +77,7 @@ chokidar = require "chokidar"
       full_obj_list.sort()
       await
         for dir in dir_list
+          affected_dir_list.push dir
           cb = defer()
           do (dir, cb)->
             opt = {
@@ -85,6 +89,7 @@ chokidar = require "chokidar"
               
               obj_list : full_obj_list
               use_wasm_runtime
+              verbose
             }
             await mod_compile opt, defer(err)
             if err
@@ -92,12 +97,12 @@ chokidar = require "chokidar"
               is_ok = false
             cb()
     
-    safe_on_recompile_done() if is_ok
+    safe_on_recompile_done(affected_dir_list) if is_ok
   
   recompile_in_progress = false
   recompile_handler = (file_change_hash, on_end)->
     # TODO check what lib/mod is this file related
-    
+    affected_dir_list = []
     need_recompile_lib = false
     err = null
     is_ok = true
@@ -111,10 +116,11 @@ chokidar = require "chokidar"
             break
         
         continue if !is_needed
+        affected_dir_list.push lib.dir
         need_recompile_lib = true
         cb = defer()
         do (lib, cb)->
-          await lib_compile lib, defer(err, res)
+          await lib_compile obj_merge({verbose}, lib), defer(err, res)
           if err
             perr err
             is_ok = false
@@ -138,6 +144,7 @@ chokidar = require "chokidar"
                 break
           
           continue if !is_needed
+          affected_dir_list.push dir
           cb = defer()
           do (dir, cb)->
             opt = {
@@ -148,6 +155,8 @@ chokidar = require "chokidar"
               path_wat
               
               obj_list : full_obj_list
+              use_wasm_runtime
+              verbose
             }
             await mod_compile opt, defer(err)
             if err
@@ -156,7 +165,7 @@ chokidar = require "chokidar"
             cb()
     
     on_end(err)
-    safe_on_recompile_done() if is_ok
+    safe_on_recompile_done(affected_dir_list) if is_ok
   
   # заимствовано с webcom
   first_update_ts = 0

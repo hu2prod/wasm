@@ -31,6 +31,7 @@ lock = (opt, wrap_me, continue_fn)->
 @lib_compile = (opt, on_end)->
   {
     dir
+    verbose
   } = opt
   
   flag_list = [
@@ -67,14 +68,21 @@ lock = (opt, wrap_me, continue_fn)->
     for job in job_list
       {cmd, dir} = job
       await exec cmd, {cwd: dir}, defer(err); return on_end err if err
+      if verbose
+        puts dir
   else
+    first_err = null
     for job in job_list
       await limiter.lock defer()
       do (job)->
         {cmd, dir} = job
-        await exec cmd, {cwd: dir}, defer(err); return on_end err if err
+        await exec cmd, {cwd: dir}, defer(err)
+        first_err ?= err # prevent limiter dead-lock
+        if verbose
+          puts dir
         limiter.unlock()
     await limiter.drain defer()
+    return on_end first_err if first_err
   
   # just to keep stable
   obj_list.sort()
@@ -94,6 +102,7 @@ _mod_compile_counter = 0
     path_wat
     
     obj_list
+    verbose
   } = opt
   if dir
     path_c    ?= "#{dir}/index.c"
@@ -144,6 +153,8 @@ _mod_compile_counter = 0
   
   cmd = "clang-8 #{flag_list.join ' '} -std=c11 -o #{path_wasm} #{compile_target} #{opt.obj_list.join ' '}"
   await exec cmd, defer(err); return on_end err if err
+  if verbose
+    puts dir
   
   await fs.readFile path_wasm, defer(err, wasm_buffer); return on_end err if err
   
