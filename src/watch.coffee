@@ -9,6 +9,7 @@ chokidar = require "chokidar"
 @watch = (opt, on_end)->
   {
     dir
+    dir_list
     
     # mod_compile stuff
     path_c
@@ -31,6 +32,9 @@ chokidar = require "chokidar"
   use_wasm_runtime  ?= true
   chokidar_opt      ?= {}
   on_recompile_done ?= ()->
+  
+  if !dir_list
+    dir_list = [dir]
   
   if use_wasm_runtime
     lib_dir_list.upush "node_modules/wasm_runtime/lib"
@@ -68,20 +72,25 @@ chokidar = require "chokidar"
       full_obj_list = obj_list.clone()
       full_obj_list.uappend extra_obj_list
       full_obj_list.sort()
-      opt = {
-        dir
-        
-        path_c
-        path_wasm
-        path_wat
-        
-        obj_list : full_obj_list
-        use_wasm_runtime
-      }
-      await mod_compile opt, defer(err)
-      if err
-        perr err
-        is_ok = false
+      await
+        for dir in dir_list
+          cb = defer()
+          do (dir, cb)->
+            opt = {
+              dir
+              
+              path_c
+              path_wasm
+              path_wat
+              
+              obj_list : full_obj_list
+              use_wasm_runtime
+            }
+            await mod_compile opt, defer(err)
+            if err
+              perr err
+              is_ok = false
+            cb()
     
     safe_on_recompile_done() if is_ok
   
@@ -89,6 +98,7 @@ chokidar = require "chokidar"
   recompile_handler = (file_change_hash, on_end)->
     # TODO check what lib/mod is this file related
     
+    need_recompile_lib = false
     err = null
     is_ok = true
     extra_obj_list = []
@@ -101,6 +111,7 @@ chokidar = require "chokidar"
             break
         
         continue if !is_needed
+        need_recompile_lib = true
         cb = defer()
         do (lib, cb)->
           await lib_compile lib, defer(err, res)
@@ -115,19 +126,34 @@ chokidar = require "chokidar"
       full_obj_list = obj_list.clone()
       full_obj_list.uappend extra_obj_list
       full_obj_list.sort()
-      opt = {
-        dir
-        
-        path_c
-        path_wasm
-        path_wat
-        
-        obj_list : full_obj_list
-      }
-      await mod_compile opt, defer(err)
-      if err
-        perr err
-        is_ok = false
+      await
+        for dir in dir_list
+          is_needed = false
+          if need_recompile_lib
+            is_needed = true
+          else
+            for file,_v of file_change_hash
+              if 0 == file.indexOf dir
+                is_needed = true
+                break
+          
+          continue if !is_needed
+          cb = defer()
+          do (dir, cb)->
+            opt = {
+              dir
+              
+              path_c
+              path_wasm
+              path_wat
+              
+              obj_list : full_obj_list
+            }
+            await mod_compile opt, defer(err)
+            if err
+              perr err
+              is_ok = false
+            cb()
     
     on_end(err)
     safe_on_recompile_done() if is_ok
