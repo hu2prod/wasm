@@ -145,25 +145,29 @@ _mod_compile_counter = 0
   ]
   if opt.drop_clang_warning
     flag_list.push "-w"
+  if use_wasm_runtime
+    flag_list.push "-I#{mod_path.resolve 'node_modules/wasm_runtime/lib'}"
   
-  if !use_wasm_runtime
-    compile_target = path_c
-  else
-    compile_target = path_proxy
-    runtime_path = "node_modules/wasm_runtime/lib/runtime.h"
-    proxy_cont = """
-    #include #{JSON.stringify mod_path.resolve runtime_path}
-    #include #{JSON.stringify mod_path.resolve path_c}
-    
-    """
-    
-    await fs.writeFile path_proxy, proxy_cont, defer(err); return on_end err if err
-    
-    old_on_end = on_end
-    on_end = ()->
-      unless keep_tmp
-        await fs.unlink path_proxy, defer(err); return old_on_end err if err
-      old_on_end()
+  compile_target = path_c
+  
+  # if !use_wasm_runtime
+  #   compile_target = path_c
+  # else
+  #   compile_target = path_proxy
+  #   runtime_path = "node_modules/wasm_runtime/lib/runtime.h"
+  #   proxy_cont = """
+  #   #include #{JSON.stringify mod_path.resolve runtime_path}
+  #   #include #{JSON.stringify mod_path.resolve path_c}
+  #   
+  #   """
+  #   
+  #   await fs.writeFile path_proxy, proxy_cont, defer(err); return on_end err if err
+  #   
+  #   old_on_end = on_end
+  #   on_end = ()->
+  #     unless keep_tmp
+  #       await fs.unlink path_proxy, defer(err); return old_on_end err if err
+  #     old_on_end()
   
   cmd = "clang-8 #{flag_list.join ' '} -std=c11 -o #{path_wasm} #{compile_target} #{opt.obj_list.join ' '}"
   await exec cmd, defer(err, stdout, stderr)
