@@ -22,7 +22,7 @@
     "chokidar": "^3.3.1",
     "fy": "github:hu2prod/fy",
     "lock_mixin": "github:hu2prod/lock_mixin",
-    "wabt": "^1.0.12"
+    "wabt": "1.0.12"
   },
   "devDependencies": {
     "coveralls": "^2.11.16",
